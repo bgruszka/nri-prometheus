@@ -480,7 +480,7 @@ func TestIgnoreRules_PrefixesWithExceptions(t *testing.T) {
 			Prefixes: []string{"redis_exporter_scrapes"},
 		},
 		{
-			Prefixes: []string{"redis_instan"}, Except: []string{"redis_instance"},
+			Prefixes: []string{"redis_instan"}, Except: []ExceptRule{{"redis_instance", "", ""}}, //string{"redis_instance"},
 		},
 	})
 
@@ -511,7 +511,7 @@ func TestIgnoreRules_MetricTypesWithExceptions(t *testing.T) {
 	entity := scrapeString(t, prometheusInput)
 	filter(&entity, []IgnoreRule{
 		{
-			MetricTypes: []string{"gauge"}, Except: []string{"redis_instance_info"},
+			MetricTypes: []string{"gauge"}, Except: []ExceptRule{{"redis_instance_info", "", ""}},
 		},
 	})
 
@@ -542,10 +542,47 @@ func TestIgnoreRules_IgnoreAllExceptExceptions(t *testing.T) {
 	entity := scrapeString(t, prometheusInput)
 	filter(&entity, []IgnoreRule{
 		{
-			Except: []string{"redis_exporter_build"},
+			Except: []ExceptRule{{"redis_exporter_build", "", ""}},
 		},
 		{
-			Except: []string{"redis_instance"},
+			Except: []ExceptRule{{"redis_instance", "", ""}},
+		},
+		{
+			Prefixes: []string{"not_matching"},
+		},
+	})
+
+	actual := map[string]interface{}{}
+	for _, metric := range entity.Metrics {
+		switch metric.name {
+		case "redis_exporter_build_info":
+			actual[metric.name] = 1
+		case "redis_instantaneous_input_kbps":
+			require.Fail(t, "redis_instantaneous_input_kbps must have been filtered")
+		case "redis_exporter_scrapes_total":
+			require.Fail(t, "redis_exporter_scrapes_total must have been filtered")
+		case "redis_instance_info":
+			actual[metric.name] = 1
+		default:
+			require.Fail(t, "unexpected metric", "%#v", metric)
+		}
+	}
+
+	assert.Len(t, actual, 2)
+	assert.Contains(t, actual, "redis_exporter_build_info")
+	assert.Contains(t, actual, "redis_instance_info")
+}
+
+func TestIgnoreRules_IgnoreAllExceptWithAttributeExceptions(t *testing.T) {
+	t.Parallel()
+
+	entity := scrapeString(t, prometheusInput)
+	filter(&entity, []IgnoreRule{
+		{
+			Except: []ExceptRule{{"redis_exporter_build", "", ""}},
+		},
+		{
+			Except: []ExceptRule{{"redis_instance", "addr", "ohai-playground-redis-master:6379"}},
 		},
 		{
 			Prefixes: []string{"not_matching"},
@@ -583,10 +620,10 @@ func TestIgnoreRules_MatchingExceptRulesTakesPriorityOverOtherRules(t *testing.T
 			MetricTypes: []string{"counter"},
 		},
 		{
-			Except: []string{"redis_instance"},
+			Except: []ExceptRule{{"redis_instance", "", ""}},
 		},
 		{
-			Except: []string{"something_different"},
+			Except: []ExceptRule{{"something_different", "", ""}},
 		},
 		{
 			Prefixes:    []string{"redis_instance"},
