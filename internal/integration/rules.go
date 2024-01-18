@@ -27,7 +27,7 @@ type RenameRule struct {
 	Attributes   map[string]interface{} `mapstructure:"attributes"`
 }
 
-type ExceptRule struct {
+type ExceptAttributeRule struct {
 	MetricPrefix   string `mapstructure:"metric_prefix"`
 	AttributeKey   string `mapstructure:"attribute_key"`
 	AttributeValue string `mapstructure:"attribute_value"`
@@ -38,9 +38,10 @@ type ExceptRule struct {
 // If Prefixes are empty and Except is not, then all metrics that do not
 // match Except will be skipped.
 type IgnoreRule struct {
-	Prefixes    []string     `mapstructure:"prefixes"`
-	MetricTypes []string     `mapstructure:"metric_types"`
-	Except      []ExceptRule `mapstructure:"except"`
+	Prefixes         []string              `mapstructure:"prefixes"`
+	MetricTypes      []string              `mapstructure:"metric_types"`
+	Except           []string              `mapstructure:"except"`
+	ExceptAttributes []ExceptAttributeRule `mapstructure:"except_attributes"`
 }
 
 // CopyAttributesRule is a rule that copies the Attributes from the metric that
@@ -215,8 +216,8 @@ func addAttributes(targetMetrics *TargetMetrics, rules []AddAttributesRule) {
 type ignoreRules []IgnoreRule
 
 func (rules ignoreRules) shouldIgnore(name string, metricType metricType, attributes labels.Set) bool {
-	// If the user specified ,in any set of rules, an except rule that is matching the metric name, we should keep the metric
-	if rules.isMetricExcepted(name, attributes) {
+	// If the user specified in any set of rules, an except rule that is matching the metric name, we should keep the metric
+	if rules.isMetricExcepted(name) || rules.isAttributeExcepted(name, attributes) {
 		return false
 	}
 
@@ -247,9 +248,22 @@ func (rules ignoreRules) shouldIgnore(name string, metricType metricType, attrib
 }
 
 // When matching an except rule we do not drop the metric, no matter if a rule is dropping it after
-func (rules ignoreRules) isMetricExcepted(name string, attributes labels.Set) bool {
+func (rules ignoreRules) isMetricExcepted(name string) bool {
 	for _, rule := range rules {
-		for _, exceptItem := range rule.Except {
+		for _, prefix := range rule.Except {
+			if strings.HasPrefix(name, prefix) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+// When matching an except rule we do not drop the metric, no matter if a rule is dropping it after
+func (rules ignoreRules) isAttributeExcepted(name string, attributes labels.Set) bool {
+	for _, rule := range rules {
+		for _, exceptItem := range rule.ExceptAttributes {
 			prefixMatched := false
 			attributeMatched := false
 

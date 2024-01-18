@@ -480,7 +480,7 @@ func TestIgnoreRules_PrefixesWithExceptions(t *testing.T) {
 			Prefixes: []string{"redis_exporter_scrapes"},
 		},
 		{
-			Prefixes: []string{"redis_instan"}, Except: []ExceptRule{{"redis_instance", "", ""}}, //string{"redis_instance"},
+			Prefixes: []string{"redis_instan"}, Except: []string{"redis_instance"},
 		},
 	})
 
@@ -511,7 +511,7 @@ func TestIgnoreRules_MetricTypesWithExceptions(t *testing.T) {
 	entity := scrapeString(t, prometheusInput)
 	filter(&entity, []IgnoreRule{
 		{
-			MetricTypes: []string{"gauge"}, Except: []ExceptRule{{"redis_instance_info", "", ""}},
+			MetricTypes: []string{"gauge"}, Except: []string{"redis_instance_info"},
 		},
 	})
 
@@ -542,10 +542,10 @@ func TestIgnoreRules_IgnoreAllExceptExceptions(t *testing.T) {
 	entity := scrapeString(t, prometheusInput)
 	filter(&entity, []IgnoreRule{
 		{
-			Except: []ExceptRule{{"redis_exporter_build", "", ""}},
+			Except: []string{"redis_exporter_build"},
 		},
 		{
-			Except: []ExceptRule{{"redis_instance", "", ""}},
+			Except: []string{"redis_instance"},
 		},
 		{
 			Prefixes: []string{"not_matching"},
@@ -579,10 +579,10 @@ func TestIgnoreRules_IgnoreAllExceptWithAttributeExceptions(t *testing.T) {
 	entity := scrapeString(t, prometheusInput)
 	filter(&entity, []IgnoreRule{
 		{
-			Except: []ExceptRule{{"redis_exporter_build", "", ""}},
+			Except: []string{"redis_exporter_build"},
 		},
 		{
-			Except: []ExceptRule{{"redis_instance", "addr", "ohai-playground-redis-master:6379"}},
+			ExceptAttributes: []ExceptAttributeRule{{"redis_instance", "addr", "ohai-playground-redis-master:6379"}},
 		},
 		{
 			Prefixes: []string{"not_matching"},
@@ -620,10 +620,10 @@ func TestIgnoreRules_MatchingExceptRulesTakesPriorityOverOtherRules(t *testing.T
 			MetricTypes: []string{"counter"},
 		},
 		{
-			Except: []ExceptRule{{"redis_instance", "", ""}},
+			Except: []string{"redis_instance"},
 		},
 		{
-			Except: []ExceptRule{{"something_different", "", ""}},
+			Except: []string{"something_different"},
 		},
 		{
 			Prefixes:    []string{"redis_instance"},
